@@ -2,9 +2,8 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador Glassform</title>
-    <!-- Librerías para exportar a PDF e Imagen -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SOPA DE LETRAS HARDSTYLE</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
@@ -16,6 +15,9 @@
             --text-dark: #1d1d1f;
             --apple-blue: #007aff;
             --apple-blue-hover: #005bb5;
+            
+            --cell-size: 30px;
+            --cell-font: 18px;
         }
 
         * {
@@ -25,14 +27,13 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
-        body {
-            /* Fondo suave y minimalista estilo iOS */
+body {
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            background-attachment: fixed; 
             min-height: 100vh;
             display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
+            flex-direction: column; 
+            padding: 20px; 
             overflow-x: hidden;
             color: var(--text-dark);
         }
@@ -41,26 +42,26 @@
         .app-container {
             width: 100%;
             max-width: 800px;
+            margin: 0 auto; /* Centrado horizontal seguro */
             transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
+/* Al usar display: none, las películas ocultas dejan de estirar la pantalla hacia abajo */
         .hidden-slide {
-            opacity: 0;
-            visibility: hidden;
-            position: absolute;
-            transform: scale(0.95);
-            pointer-events: none;
+            display: none !important; 
         }
 
         .active-slide {
-            opacity: 1;
-            visibility: visible;
-            position: relative;
-            transform: scale(1);
-            pointer-events: auto;
+            display: block;
+            animation: fadeIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
 
-        /* ----- ESTÉTICA GLASSMORPHISM (BURBUJA IOS) ----- */
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: scale(0.95); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        /* ----- ESTÉTICA GLASSMORPHISM ----- */
         .glass-panel {
             background: var(--glass-bg);
             backdrop-filter: blur(20px);
@@ -85,6 +86,7 @@
             flex-direction: column;
             gap: 10px;
             align-items: center;
+            width: 100%;
         }
 
         input[type="number"], input[type="text"] {
@@ -143,17 +145,19 @@
             gap: 10px;
             justify-content: center;
             margin-bottom: 20px;
+            width: 100%;
         }
 
-        /* ----- ZONA DE IMPRESIÓN (SOPA DE LETRAS) ----- */
+        /* ----- ZONA DE IMPRESIÓN ----- */
         .print-area {
             background: white;
             padding: 40px;
-            border-radius: 0px; /* Cuadrado como pediste para la sopa */
+            border-radius: 0px; 
             margin-top: 30px;
             display: none;
             color: black;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            width: 100%;
         }
 
         .print-header {
@@ -166,31 +170,48 @@
             padding-bottom: 10px;
         }
 
+        .sopa-scroll-container {
+            width: 100%;
+            overflow-x: auto;
+            display: flex;
+            justify-content: center;
+            padding-bottom: 10px; 
+        }
+
         .sopa-grid {
             display: grid;
             gap: 2px;
-            margin: 20px auto;
             border: 2px solid black;
             padding: 5px;
             width: fit-content;
         }
 
         .sopa-cell {
-            width: 30px;
-            height: 30px;
+            width: var(--cell-size);
+            height: var(--cell-size);
             display: flex;
             align-items: center;
             justify-content: center;
             font-family: monospace;
-            font-size: 18px;
+            font-size: var(--cell-font);
             font-weight: bold;
+            cursor: pointer; 
+            user-select: none;
+            transition: all 0.2s ease;
+        }
+
+        .sopa-cell.highlighted {
+            background-color: rgba(0, 122, 255, 0.2);
+            color: var(--apple-blue);
+            border-radius: 4px;
         }
 
         .word-list-print {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-            margin-top: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 15px 20px;
+            width: 100%;
+            max-width: 600px;
             font-family: monospace;
             font-size: 16px;
         }
@@ -199,52 +220,71 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            cursor: pointer; 
+            user-select: none;
+            transition: opacity 0.2s;
         }
 
         .checkbox-print {
             width: 15px;
             height: 15px;
             border: 2px solid black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .checkbox-print.checked {
+            background-color: #34c759; 
+            border-color: #34c759;
+        }
+        .checkbox-print.checked::after {
+            content: '✓';
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .word-item-print.found {
+            text-decoration: line-through;
+            opacity: 0.5;
         }
 
         .export-controls {
             margin-top: 20px;
             display: none;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
         }
 
         /* ----- EL EASTER EGG (TEXTO LOWKEY) ----- */
-        /* AQUÍ ESTÁ EL TEXTO QUE ELLA DEBE DESCUBRIR */
-/* ----- EL EASTER EGG (TEXTO LOWKEY) ----- */
+
         .easter-egg-trigger {
-            position: fixed;
-            bottom: 15px;
-            left: 50%;
-            transform: translateX(-50%);
+            /* Flujo normal: se queda clavado al fondo real del contenido, el teclado no lo levanta */
+            position: relative;
+            margin-top: auto; /* Empuja el texto hacia el fondo de la pantalla */
+            padding-top: 40px;
+            padding-bottom: 10px;
             font-size: 10px;
             color: rgba(0,0,0,0.4);
             cursor: pointer;
             user-select: none;
             letter-spacing: 2px;
-            z-index: 100;
-            /* Se añade la animación aquí */
             animation: parpadeoPiola 3s infinite ease-in-out;
+            text-align: center;
+            width: 100%; 
         }
 
         .easter-egg-trigger:hover {
             color: rgba(0,0,0,0.8);
-            animation: none; /* Se detiene si pone el mouse encima */
+            animation: none; 
         }
 
-        /* Animación de luces/latido muy suave */
         @keyframes parpadeoPiola {
-            0%, 100% { 
-                opacity: 0.2; 
-                text-shadow: 0 0 0px transparent;
-            }
-            50% { 
-                opacity: 1; 
-                text-shadow: 0 0 8px rgba(0, 0, 0, 0.2); 
-            }
+            0%, 100% { opacity: 0.2; text-shadow: 0 0 0px transparent; }
+            50% { opacity: 1; text-shadow: 0 0 8px rgba(0, 0, 0, 0.2); }
         }
 
         /* ----- EASTER EGG: INVITACIÓN ----- */
@@ -259,14 +299,14 @@
 
         #btn-si {
             transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            background-color: #34c759; /* Verde iOS */
+            background-color: #34c759; 
             font-size: 20px;
             padding: 20px 40px;
         }
 
         #btn-no {
             transition: transform 0.3s ease, opacity 0.3s ease;
-            background-color: #ff3b30; /* Rojo iOS */
+            background-color: #ff3b30; 
         }
 
         .imagen-broma {
@@ -279,7 +319,6 @@
             animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        /* ----- EASTER EGG: CARTELERA ----- */
         .cartelera-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -305,13 +344,14 @@
             object-fit: cover;
             border-radius: 16px;
             margin-bottom: 15px;
-            background-color: #e0e0e0; /* Placeholder color */
+            background-color: #e0e0e0; 
         }
 
         .horarios {
             display: flex;
             gap: 10px;
             justify-content: center;
+            flex-wrap: wrap;
         }
 
         .btn-horario {
@@ -325,7 +365,6 @@
             100% { transform: scale(1); opacity: 1; }
         }
 
-        /* Modal Exito */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -351,9 +390,67 @@
             box-shadow: 0 20px 40px rgba(0,0,0,0.2);
             transform: scale(0.8);
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            width: 90%;
+            max-width: 400px;
         }
         .modal-overlay.active .modal-content {
             transform: scale(1);
+        }
+
+        /* =========================================
+           DISEÑO RESPONSIVO (ESPECIAL CELULARES)
+           ========================================= */
+/* =========================================
+           DISEÑO RESPONSIVO (ESPECIAL CELULARES)
+           ========================================= */
+        @media (max-width: 600px) {
+            :root {
+                --cell-size: 22px;
+                --cell-font: 14px;
+            }
+
+            body {
+                padding: 20px 10px 80px 10px; 
+            }
+
+            .glass-panel {
+                padding: 25px 15px; 
+                border-radius: 20px;
+            }
+
+            h1 { font-size: 26px; }
+            h2 { font-size: 22px; }
+
+            .input-group input, 
+            #btn-generar, 
+            .export-controls .btn {
+                max-width: 100%; 
+                width: 100%;
+            }
+
+            .print-area {
+                padding: 20px 10px;
+            }
+
+            .word-list-print {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+                font-size: 13px;
+            }
+
+            .botones-decision {
+                flex-direction: column;
+                width: 100%;
+                gap: 15px;
+            }
+            #btn-si, #btn-no {
+                width: 100%;
+                max-width: 250px;
+            }
+
+            .cartelera-grid {
+                grid-template-columns: 1fr; 
+            }
         }
     </style>
 </head>
@@ -364,41 +461,43 @@
          ========================================== -->
     <div id="app-sopa" class="app-container active-slide">
         <div class="glass-panel">
-            <h1>Sopa de Letras</h1>
+            <h1>Sopa de Letras A LO MATON </h1>
             <p style="margin-bottom: 20px; color: #666;">Diseño minimalista para tus pasatiempos</p>
             
             <div class="input-group">
                 <label>¿Cuántas palabras quieres ingresar?</label>
                 <input type="number" id="num-words" min="1" max="20" placeholder="Ej: 5">
-                <button class="btn" onclick="crearInputsPalabras()">Siguiente</button>
+                <button class="btn" style="width: 100%; max-width: 300px;" onclick="crearInputsPalabras()">Siguiente</button>
             </div>
 
             <div id="words-container"></div>
             
             <button id="btn-generar" class="btn" style="display: none; width: 100%; max-width: 300px; margin: 0 auto;" onclick="generarSopa()">Generar Sopa de Letras</button>
 
-            <!-- Controles de exportación (aparecen tras generar) -->
+            <!-- Controles de exportación -->
             <div class="export-controls" id="export-controls">
                 <button class="btn btn-secondary" onclick="exportarImagen()">Descargar Imagen</button>
                 <button class="btn btn-secondary" onclick="exportarPDF()">Descargar PDF</button>
             </div>
         </div>
 
-        <!-- El formato final a imprimir -->
+        <!-- El formato final a imprimir / jugar -->
         <div id="print-section" class="print-area">
             <div class="print-header">SOPA</div>
             <div class="print-sub-header" style="border-bottom: 2px solid black; margin-bottom: 20px;"></div>
             
-            <div style="display: flex; gap: 40px; justify-content: center; align-items: flex-start; flex-wrap: wrap;">
-                <div id="sopa-grid" class="sopa-grid"></div>
+            <div style="display: flex; flex-direction: column; gap: 30px; justify-content: center; align-items: center;">
+                <div class="sopa-scroll-container">
+                    <div id="sopa-grid" class="sopa-grid"></div>
+                </div>
+                
                 <div id="word-list-print" class="word-list-print"></div>
             </div>
         </div>
     </div>
 
     <!-- EL TRIGGER SECRETO (EASTER EGG) -->
-    <!-- ESTE ES EL TEXTO QUE ELLA DEBE CLIQUEAR PARA IR A LA INVITACIÓN -->
-    <div class="easter-egg-trigger" onclick="activarEasterEgg()">DANIELA HAZ CLIK ACA O EL DANNY OCEAN SACA UN TEMA BUENO Y HAY UN TERREMOTO</div>
+    <div class="easter-egg-trigger" onclick="activarEasterEgg()">HAZ CLIK ACA O EL DANNY OCEAN SACA UN TEMA BUENO Y HAY UN TERREMOTO</div>
 
     <!-- ==========================================
          SECCIÓN 2: EASTER EGG (LA INVITACIÓN)
@@ -407,90 +506,66 @@
         
         <!-- PREGUNTA -->
         <div id="slide-pregunta" class="glass-panel active-slide">
-            <!-- AQUÍ PUEDES CAMBIAR EL TEXTO DE LA PREGUNTA -->
             <h1>Vamos al muvix despues de clase la otra semana??</h1>
-
             <div class="botones-decision">
                 <button id="btn-si" class="btn" onclick="irADias()">obvi</button>
                 <button id="btn-no" class="btn btn-secondary" onclick="achicarNo()">NO, ANDO R :,))</button>
             </div>
-            
-            <!-- AQUÍ COLOCA EL ENLACE A TU IMAGEN DEL EMOJI RIÉNDOSE -->
             <img id="img-broma" class="imagen-broma" src="RISA.jpg" alt="Jaja">
         </div>
 
-
-    <!-- SELECCIÓN DE DÍAS (NUEVO SLIDE) -->
+        <!-- SELECCIÓN DE DÍAS -->
         <div id="slide-dias" class="glass-panel hidden-slide">
             <h2>¿Qué día te acomoda más? 🗓️</h2>
-            <div class="botones-decision" style="flex-direction: column; gap: 15px;">
-                <button class="btn" style="width: 100%; max-width: 250px;" onclick="seleccionarDiaYContinuar('lunes 28')">Lunes 28</button>
-                <button class="btn" style="width: 100%; max-width: 250px;" onclick="seleccionarDiaYContinuar('martes 29')">Martes 29</button>
-                <button class="btn" style="width: 100%; max-width: 250px;" onclick="seleccionarDiaYContinuar('miércoles 30')">Miércoles 30</button>
+            <div class="botones-decision">
+                <button class="btn" onclick="seleccionarDiaYContinuar('lunes 28')">Lunes 28</button>
+                <button class="btn" onclick="seleccionarDiaYContinuar('martes 29')">Martes 29</button>
+                <button class="btn" onclick="seleccionarDiaYContinuar('miércoles 30')">Miércoles 30</button>
             </div>
         </div>
-
 
         <!-- CARTELERA DE PELÍCULAS -->
         <div id="slide-cartelera" class="glass-panel hidden-slide">
             <h2>elige sabiamente oommmmmm modo zen (tienes que clikear la hora de la peli)</h2>
-            
             <div class="cartelera-grid">
                 
-                <!-- PELÍCULA 1 -->
                 <div class="peli-card">
-                    <!-- REEMPLAZA EL SRC CON LA IMAGEN DE LA PELI 1 -->
                     <img src="peli1.jpg" class="peli-img" alt="RESIDENT EVIL: NOCHE CERO">
                     <h3>RESIDENT EVIL: NOCHE CERO</h3>
                     <div class="horarios">
-                        <!-- MODIFICA LOS HORARIOS AQUÍ -->
                         <button class="btn btn-secondary btn-horario" onclick="confirmarCita('RESIDENT EVIL: NOCHE CERO', '20:15')">20:15</button>
                         <button class="btn btn-secondary btn-horario" onclick="confirmarCita('RESIDENT EVIL: NOCHE CERO', '22:00')">22:00</button>
                     </div>
                 </div>
 
-                <!-- PELÍCULA 2 -->
                 <div class="peli-card">
-                    <!-- REEMPLAZA EL SRC CON LA IMAGEN DE LA PELI 2 -->
                     <img src="peli2.jpg" class="peli-img" alt="SPIDER-MAN: UN NUEVO DÍA">
                     <h3>SPIDER-MAN: UN NUEVO DÍA</h3>
                     <div class="horarios">
-                        <!-- MODIFICA LOS HORARIOS AQUÍ -->
                         <button class="btn btn-secondary btn-horario" onclick="confirmarCita('SPIDER-MAN: UN NUEVO DÍA', '20:35')">20:35</button>
                     </div>
                 </div>
 
-                <!-- PELÍCULA 3 -->
                 <div class="peli-card">
-                    <!-- REEMPLAZA EL SRC CON LA IMAGEN DE LA PELI 3 -->
                     <img src="peli3.jpg" class="peli-img" alt="Peli 3">
                     <h3>EL CORAZÓN DE LA BESTIA</h3>
                     <div class="horarios">
-                        <!-- MODIFICA LOS HORARIOS AQUÍ -->
                         <button class="btn btn-secondary btn-horario" onclick="confirmarCita('EL CORAZÓN DE LA BESTIA', '21:25')">21:25</button>
                     </div>
                 </div>
 
-                                <!-- PELÍCULA 4 -->
                 <div class="peli-card">
-                    <!-- REEMPLAZA EL SRC CON LA IMAGEN DE LA PELI 3 -->
                     <img src="peli4.jpg" class="peli-img" alt="Peli 3">
                     <h3>LA ODISEA</h3>
                     <div class="horarios">
-                        <!-- MODIFICA LOS HORARIOS AQUÍ -->
                         <button class="btn btn-secondary btn-horario" onclick="confirmarCita('LA ODISEA', '21:00')">21:00</button>
                     </div>
                 </div>
 
-                
-                
-                                                <!-- PELÍCULA 5 -->
                 <div class="peli-card">
-                    <!-- REEMPLAZA EL SRC CON LA IMAGEN DE LA PELI 3 -->
                     <img src="peli5.jpg" class="peli-img" alt="Peli 3">
                     <h3>AVENGERS: ENDGAME BONUS</h3>
                     <div class="horarios">
-                        <!-- MODIFICA LOS HORARIOS AQUÍ -->
                         <button class="btn btn-secondary btn-horario" onclick="confirmarCita('LA ODISEA', '21:40')">21:40</button>
                     </div>
                 </div>
@@ -502,16 +577,13 @@
     <!-- MODAL DE ÉXITO FINAL -->
     <div class="modal-overlay" id="success-modal">
         <div class="modal-content">
-            <h2 style="font-size: 40px; margin-bottom: 10px;">✨ Listo ✨</h2>
-            <p id="modal-text" style="font-size: 18px; color: #666;"></p>
-            <button class="btn" style="margin-top: 20px;" onclick="confirmarYRedirigir()">CONFIRMO</button>
+            <h2 style="font-size: 32px; margin-bottom: 10px;">✨ Listo ✨</h2>
+            <p id="modal-text" style="font-size: 16px; color: #666;"></p>
+            <button class="btn" style="margin-top: 20px; width: 100%;" onclick="confirmarYRedirigir()">CONFIRMO</button>
         </div>
     </div>
 
     <script>
-        /* ==========================================
-           LÓGICA: SOPA DE LETRAS PRINCIPAL
-           ========================================== */
         let palabras = [];
 
         function crearInputsPalabras() {
@@ -545,16 +617,15 @@
 
             palabras.sort((a, b) => b.length - a.length);
             const maxLength = palabras[0].length;
-            const gridSize = Math.max(15, maxLength + 2); // Tamaño dinámico o min 15
+            const gridSize = Math.max(15, maxLength + 2); 
             
             let grid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(''));
             
-            // Función básica para intentar poner la palabra
             palabras.forEach(palabra => {
                 let placed = false;
                 let attempts = 0;
                 while (!placed && attempts < 100) {
-                    const dir = Math.floor(Math.random() * 3); // 0: horiz, 1: vert, 2: diag
+                    const dir = Math.floor(Math.random() * 3); 
                     const reverse = Math.random() > 0.5;
                     const wordToPlace = reverse ? palabra.split('').reverse().join('') : palabra;
                     
@@ -569,7 +640,6 @@
                 }
             });
 
-            // Rellenar con letras aleatorias
             const letras = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ";
             for (let r = 0; r < gridSize; r++) {
                 for (let c = 0; c < gridSize; c++) {
@@ -584,8 +654,6 @@
             
             document.getElementById('print-section').style.display = 'block';
             document.getElementById('export-controls').style.display = 'flex';
-            document.getElementById('export-controls').style.justifyContent = 'center';
-            document.getElementById('export-controls').style.gap = '10px';
         }
 
         function canPlace(grid, word, row, col, dir, size) {
@@ -612,13 +680,18 @@
         function renderSopa(grid, size) {
             const container = document.getElementById('sopa-grid');
             container.innerHTML = '';
-            container.style.gridTemplateColumns = `repeat(${size}, 30px)`;
+            container.style.gridTemplateColumns = `repeat(${size}, var(--cell-size))`;
             
             for (let r = 0; r < size; r++) {
                 for (let c = 0; c < size; c++) {
                     const cell = document.createElement('div');
                     cell.className = 'sopa-cell';
                     cell.textContent = grid[r][c];
+                    
+                    cell.onclick = function() {
+                        this.classList.toggle('highlighted');
+                    };
+
                     container.appendChild(cell);
                 }
             }
@@ -628,7 +701,6 @@
             const container = document.getElementById('word-list-print');
             container.innerHTML = '';
             
-            // Ordenamos alfabéticamente para presentación
             const palabrasOrdenadas = [...palabras].sort();
             
             palabrasOrdenadas.forEach(palabra => {
@@ -643,14 +715,25 @@
                 
                 div.appendChild(checkbox);
                 div.appendChild(text);
+
+                div.onclick = function() {
+                    checkbox.classList.toggle('checked');
+                    div.classList.toggle('found');
+                };
+
                 container.appendChild(div);
             });
         }
 
-        // --- Exportación ---
         function exportarImagen() {
             const printArea = document.getElementById('print-section');
-            html2canvas(printArea).then(canvas => {
+            html2canvas(printArea, {
+                onclone: function(clonedDoc) {
+                    clonedDoc.querySelectorAll('.highlighted').forEach(el => el.classList.remove('highlighted'));
+                    clonedDoc.querySelectorAll('.checked').forEach(el => el.classList.remove('checked'));
+                    clonedDoc.querySelectorAll('.found').forEach(el => el.classList.remove('found'));
+                }
+            }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = 'SopaDeLetras.png';
                 link.href = canvas.toDataURL();
@@ -662,7 +745,13 @@
             const { jsPDF } = window.jspdf;
             const printArea = document.getElementById('print-section');
             
-            html2canvas(printArea).then(canvas => {
+            html2canvas(printArea, {
+                onclone: function(clonedDoc) {
+                    clonedDoc.querySelectorAll('.highlighted').forEach(el => el.classList.remove('highlighted'));
+                    clonedDoc.querySelectorAll('.checked').forEach(el => el.classList.remove('checked'));
+                    clonedDoc.querySelectorAll('.found').forEach(el => el.classList.remove('found'));
+                }
+            }).then(canvas => {
                 const imgData = canvas.toDataURL('image/png');
                 const doc = new jsPDF({
                     orientation: 'portrait',
@@ -679,26 +768,18 @@
             });
         }
 
-
-        /* ==========================================
-           LÓGICA: EASTER EGG (INVITACIÓN CINE)
-           ========================================== */
-        
         let clicksNo = 0;
         let scaleSi = 1;
         let scaleNo = 1;
 
-        
         let diaElegido = '';
         let peliculaElegida = '';
         let horaElegida = '';
 
-        // ACTIVADOR DEL EASTER EGG
         function activarEasterEgg() {
-            // Oculta la app principal y muestra el flujo de la invitación
             document.getElementById('app-sopa').classList.replace('active-slide', 'hidden-slide');
             document.getElementById('app-invitacion').classList.replace('hidden-slide', 'active-slide');
-            document.querySelector('.easter-egg-trigger').style.display = 'none'; // ocultar el trigger
+            document.querySelector('.easter-egg-trigger').style.display = 'none'; 
         }
 
         function achicarNo() {
@@ -718,7 +799,7 @@
             }
         }
 
-           function irADias() {
+        function irADias() {
             document.getElementById('slide-pregunta').classList.replace('active-slide', 'hidden-slide');
             document.getElementById('slide-dias').classList.replace('hidden-slide', 'active-slide');
         }
@@ -733,32 +814,20 @@
             peliculaElegida = pelicula;
             horaElegida = hora;
             const text = document.getElementById('modal-text');
-            // MENSAJE FINAL
             text.innerHTML = `Plan confirmado:<br><strong>${diaElegido}</strong><br><strong>${pelicula}</strong> a las <strong>${hora}</strong>.<br>Nos vemos! 🍿🫶`;
             document.getElementById('success-modal').classList.add('active');
         }
 
         function confirmarYRedirigir() {
-            // Crear el mensaje a copiar
             const mensaje = `Confirmo nuestra salida para el día ${diaElegido}. Veremos "${peliculaElegida}" a las ${horaElegida} :))) QUIEN SOY`;
             
-            // Método moderno para copiar al portapapeles
             navigator.clipboard.writeText(mensaje).then(() => {
-                // Redirigir a Instagram después de copiar con éxito
                 window.location.href = "https://ig.me/m/hzzk66";
             }).catch(err => {
                 console.error("Error al copiar al portapapeles: ", err);
-                // Si el PC bloquea el copiado, redirige de todas formas
                 window.location.href = "https://ig.me/m/hzzk66";
             });
         }
-
-        function irACartelera() {
-            document.getElementById('slide-pregunta').classList.replace('active-slide', 'hidden-slide');
-            document.getElementById('slide-cartelera').classList.replace('hidden-slide', 'active-slide');
-        }
-
-
 
         function cerrarModal() {
             document.getElementById('success-modal').classList.remove('active');
