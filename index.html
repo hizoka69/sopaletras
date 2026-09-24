@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador Glassform</title>
+    <!-- Librerías para exportar a PDF e Imagen -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <style>
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.4);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+            --text-dark: #1d1d1f;
+            --apple-blue: #007aff;
+            --apple-blue-hover: #005bb5;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            /* Fondo suave y minimalista estilo iOS */
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow-x: hidden;
+            color: var(--text-dark);
+        }
+
+        /* ----- CONTENEDORES PRINCIPALES ----- */
+        .app-container {
+            width: 100%;
+            max-width: 800px;
+            transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        .hidden-slide {
+            opacity: 0;
+            visibility: hidden;
+            position: absolute;
+            transform: scale(0.95);
+            pointer-events: none;
+        }
+
+        .active-slide {
+            opacity: 1;
+            visibility: visible;
+            position: relative;
+            transform: scale(1);
+            pointer-events: auto;
+        }
+
+        /* ----- ESTÉTICA GLASSMORPHISM (BURBUJA IOS) ----- */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 30px;
+            box-shadow: var(--glass-shadow);
+            padding: 40px;
+            text-align: center;
+        }
+
+        h1, h2, h3 {
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            margin-bottom: 20px;
+        }
+
+        /* ----- ELEMENTOS DE FORMULARIO ----- */
+        .input-group {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+        }
+
+        input[type="number"], input[type="text"] {
+            width: 100%;
+            max-width: 300px;
+            padding: 15px 20px;
+            border-radius: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.5);
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        input:focus {
+            background: rgba(255, 255, 255, 0.8);
+            border-color: var(--apple-blue);
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+        }
+
+        /* ----- BOTONES ----- */
+        .btn {
+            background: var(--apple-blue);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 20px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 122, 255, 0.3);
+            margin: 5px;
+        }
+
+        .btn:hover {
+            background: var(--apple-blue-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.6);
+            color: var(--text-dark);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--glass-border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        #words-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        /* ----- ZONA DE IMPRESIÓN (SOPA DE LETRAS) ----- */
+        .print-area {
+            background: white;
+            padding: 40px;
+            border-radius: 0px; /* Cuadrado como pediste para la sopa */
+            margin-top: 30px;
+            display: none;
+            color: black;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .print-header {
+            text-align: center;
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+            border-bottom: 2px solid black;
+            padding-bottom: 10px;
+        }
+
+        .sopa-grid {
+            display: grid;
+            gap: 2px;
+            margin: 20px auto;
+            border: 2px solid black;
+            padding: 5px;
+            width: fit-content;
+        }
+
+        .sopa-cell {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: monospace;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .word-list-print {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 30px;
+            font-family: monospace;
+            font-size: 16px;
+        }
+
+        .word-item-print {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-print {
+            width: 15px;
+            height: 15px;
+            border: 2px solid black;
+        }
+
+        .export-controls {
+            margin-top: 20px;
+            display: none;
+        }
+
+        /* ----- EL EASTER EGG (TEXTO LOWKEY) ----- */
+        /* AQUÍ ESTÁ EL TEXTO QUE ELLA DEBE DESCUBRIR */
+/* ----- EL EASTER EGG (TEXTO LOWKEY) ----- */
+        .easter-egg-trigger {
+            position: fixed;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: rgba(0,0,0,0.4);
+            cursor: pointer;
+            user-select: none;
+            letter-spacing: 2px;
+            z-index: 100;
+            /* Se añade la animación aquí */
+            animation: parpadeoPiola 3s infinite ease-in-out;
+        }
+
+        .easter-egg-trigger:hover {
+            color: rgba(0,0,0,0.8);
+            animation: none; /* Se detiene si pone el mouse encima */
+        }
+
+        /* Animación de luces/latido muy suave */
+        @keyframes parpadeoPiola {
+            0%, 100% { 
+                opacity: 0.2; 
+                text-shadow: 0 0 0px transparent;
+            }
+            50% { 
+                opacity: 1; 
+                text-shadow: 0 0 8px rgba(0, 0, 0, 0.2); 
+            }
+        }
+
+        /* ----- EASTER EGG: INVITACIÓN ----- */
+        .botones-decision {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-top: 30px;
+            min-height: 100px;
+        }
+
+        #btn-si {
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background-color: #34c759; /* Verde iOS */
+            font-size: 20px;
+            padding: 20px 40px;
+        }
+
+        #btn-no {
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            background-color: #ff3b30; /* Rojo iOS */
+        }
+
+        .imagen-broma {
+            display: none;
+            width: 150px;
+            height: 150px;
+            border-radius: 20px;
+            margin: 20px auto;
+            object-fit: cover;
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* ----- EASTER EGG: CARTELERA ----- */
+        .cartelera-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .peli-card {
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 24px;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease;
+        }
+
+        .peli-card:hover {
+            transform: scale(1.03);
+        }
+
+        .peli-img {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+            border-radius: 16px;
+            margin-bottom: 15px;
+            background-color: #e0e0e0; /* Placeholder color */
+        }
+
+        .horarios {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn-horario {
+            padding: 8px 15px;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Modal Exito */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 40px;
+            border-radius: 30px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            transform: scale(0.8);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ==========================================
+         SECCIÓN 1: APP PRINCIPAL (SOPA DE LETRAS)
+         ========================================== -->
+    <div id="app-sopa" class="app-container active-slide">
+        <div class="glass-panel">
+            <h1>Sopa de Letras</h1>
+            <p style="margin-bottom: 20px; color: #666;">Diseño minimalista para tus pasatiempos</p>
+            
+            <div class="input-group">
+                <label>¿Cuántas palabras quieres ingresar?</label>
+                <input type="number" id="num-words" min="1" max="20" placeholder="Ej: 5">
+                <button class="btn" onclick="crearInputsPalabras()">Siguiente</button>
+            </div>
+
+            <div id="words-container"></div>
+            
+            <button id="btn-generar" class="btn" style="display: none; width: 100%; max-width: 300px; margin: 0 auto;" onclick="generarSopa()">Generar Sopa de Letras</button>
+
+            <!-- Controles de exportación (aparecen tras generar) -->
+            <div class="export-controls" id="export-controls">
+                <button class="btn btn-secondary" onclick="exportarImagen()">Descargar Imagen</button>
+                <button class="btn btn-secondary" onclick="exportarPDF()">Descargar PDF</button>
+            </div>
+        </div>
+
+        <!-- El formato final a imprimir -->
+        <div id="print-section" class="print-area">
+            <div class="print-header">SOPA</div>
+            <div class="print-sub-header" style="border-bottom: 2px solid black; margin-bottom: 20px;"></div>
+            
+            <div style="display: flex; gap: 40px; justify-content: center; align-items: flex-start; flex-wrap: wrap;">
+                <div id="sopa-grid" class="sopa-grid"></div>
+                <div id="word-list-print" class="word-list-print"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EL TRIGGER SECRETO (EASTER EGG) -->
+    <!-- ESTE ES EL TEXTO QUE ELLA DEBE CLIQUEAR PARA IR A LA INVITACIÓN -->
+    <div class="easter-egg-trigger" onclick="activarEasterEgg()">DANIELA HAZ CLIK ACA O EL DANNY OCEAN SACA UN TEMA BUENO Y HAY UN TERREMOTO</div>
+
+    <!-- ==========================================
+         SECCIÓN 2: EASTER EGG (LA INVITACIÓN)
+         ========================================== -->
+    <div id="app-invitacion" class="app-container hidden-slide">
+        
+        <!-- PREGUNTA -->
+        <div id="slide-pregunta" class="glass-panel active-slide">
+            <!-- AQUÍ PUEDES CAMBIAR EL TEXTO DE LA PREGUNTA -->
+            <h1>Vamos al muvix despues de clase la otra semana??</h1>
+
+            <div class="botones-decision">
+                <button id="btn-si" class="btn" onclick="irADias()">obvi</button>
+                <button id="btn-no" class="btn btn-secondary" onclick="achicarNo()">NO, ANDO R :,))</button>
+            </div>
+            
+            <!-- AQUÍ COLOCA EL ENLACE A TU IMAGEN DEL EMOJI RIÉNDOSE -->
+            <img id="img-broma" class="imagen-broma" src="RISA.jpg" alt="Jaja">
+        </div>
+
+
+    <!-- SELECCIÓN DE DÍAS (NUEVO SLIDE) -->
+        <div id="slide-dias" class="glass-panel hidden-slide">
+            <h2>¿Qué día te acomoda más? 🗓️</h2>
+            <div class="botones-decision" style="flex-direction: column; gap: 15px;">
+                <button class="btn" style="width: 100%; max-width: 250px;" onclick="seleccionarDiaYContinuar('lunes 28')">Lunes 28</button>
+                <button class="btn" style="width: 100%; max-width: 250px;" onclick="seleccionarDiaYContinuar('martes 29')">Martes 29</button>
+                <button class="btn" style="width: 100%; max-width: 250px;" onclick="seleccionarDiaYContinuar('miércoles 30')">Miércoles 30</button>
+            </div>
+        </div>
+
+
+        <!-- CARTELERA DE PELÍCULAS -->
+        <div id="slide-cartelera" class="glass-panel hidden-slide">
+            <h2>elige sabiamente oommmmmm modo zen (tienes que clikear la hora de la peli)</h2>
+            
+            <div class="cartelera-grid">
+                
+                <!-- PELÍCULA 1 -->
+                <div class="peli-card">
+                    <!-- REEMPLAZA EL SRC CON LA IMAGEN DE LA PELI 1 -->
+                    <img src="peli1.jpg" class="peli-img" alt="RESIDENT EVIL: NOCHE CERO">
+                    <h3>RESIDENT EVIL: NOCHE CERO</h3>
+                    <div class="horarios">
+                        <!-- MODIFICA LOS HORARIOS AQUÍ -->
+                        <button class="btn btn-secondary btn-horario" onclick="confirmarCita('RESIDENT EVIL: NOCHE CERO', '20:15')">20:15</button>
+                        <button class="btn btn-secondary btn-horario" onclick="confirmarCita('RESIDENT EVIL: NOCHE CERO', '22:00')">22:00</button>
+                    </div>
+                </div>
+
+                <!-- PELÍCULA 2 -->
+                <div class="peli-card">
+                    <!-- REEMPLAZA EL SRC CON LA IMAGEN DE LA PELI 2 -->
+                    <img src="peli2.jpg" class="peli-img" alt="SPIDER-MAN: UN NUEVO DÍA">
+                    <h3>SPIDER-MAN: UN NUEVO DÍA</h3>
+                    <div class="horarios">
+                        <!-- MODIFICA LOS HORARIOS AQUÍ -->
+                        <button class="btn btn-secondary btn-horario" onclick="confirmarCita('SPIDER-MAN: UN NUEVO DÍA', '20:35')">20:35</button>
+                    </div>
+                </div>
+
+                <!-- PELÍCULA 3 -->
+                <div class="peli-card">
+                    <!-- REEMPLAZA EL SRC CON LA IMAGEN DE LA PELI 3 -->
+                    <img src="peli3.jpg" class="peli-img" alt="Peli 3">
+                    <h3>EL CORAZÓN DE LA BESTIA</h3>
+                    <div class="horarios">
+                        <!-- MODIFICA LOS HORARIOS AQUÍ -->
+                        <button class="btn btn-secondary btn-horario" onclick="confirmarCita('EL CORAZÓN DE LA BESTIA', '21:25')">21:25</button>
+                    </div>
+                </div>
+
+                                <!-- PELÍCULA 4 -->
+                <div class="peli-card">
+                    <!-- REEMPLAZA EL SRC CON LA IMAGEN DE LA PELI 3 -->
+                    <img src="peli4.jpg" class="peli-img" alt="Peli 3">
+                    <h3>LA ODISEA</h3>
+                    <div class="horarios">
+                        <!-- MODIFICA LOS HORARIOS AQUÍ -->
+                        <button class="btn btn-secondary btn-horario" onclick="confirmarCita('LA ODISEA', '21:00')">21:00</button>
+                    </div>
+                </div>
+
+                
+                
+                                                <!-- PELÍCULA 5 -->
+                <div class="peli-card">
+                    <!-- REEMPLAZA EL SRC CON LA IMAGEN DE LA PELI 3 -->
+                    <img src="peli5.jpg" class="peli-img" alt="Peli 3">
+                    <h3>AVENGERS: ENDGAME BONUS</h3>
+                    <div class="horarios">
+                        <!-- MODIFICA LOS HORARIOS AQUÍ -->
+                        <button class="btn btn-secondary btn-horario" onclick="confirmarCita('LA ODISEA', '21:40')">21:40</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE ÉXITO FINAL -->
+    <div class="modal-overlay" id="success-modal">
+        <div class="modal-content">
+            <h2 style="font-size: 40px; margin-bottom: 10px;">✨ Listo ✨</h2>
+            <p id="modal-text" style="font-size: 18px; color: #666;"></p>
+            <button class="btn" style="margin-top: 20px;" onclick="confirmarYRedirigir()">CONFIRMO</button>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================
+           LÓGICA: SOPA DE LETRAS PRINCIPAL
+           ========================================== */
+        let palabras = [];
+
+        function crearInputsPalabras() {
+            const num = parseInt(document.getElementById('num-words').value);
+            const container = document.getElementById('words-container');
+            container.innerHTML = '';
+
+            if (isNaN(num) || num <= 0) return;
+
+            for (let i = 0; i < num; i++) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.placeholder = `Palabra ${i + 1}`;
+                input.className = 'word-input';
+                input.style.textTransform = 'uppercase';
+                container.appendChild(input);
+            }
+            document.getElementById('btn-generar').style.display = 'block';
+        }
+
+        function generarSopa() {
+            const inputs = document.querySelectorAll('.word-input');
+            palabras = [];
+            inputs.forEach(input => {
+                if (input.value.trim() !== '') {
+                    palabras.push(input.value.trim().toUpperCase());
+                }
+            });
+
+            if (palabras.length === 0) return;
+
+            palabras.sort((a, b) => b.length - a.length);
+            const maxLength = palabras[0].length;
+            const gridSize = Math.max(15, maxLength + 2); // Tamaño dinámico o min 15
+            
+            let grid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(''));
+            
+            // Función básica para intentar poner la palabra
+            palabras.forEach(palabra => {
+                let placed = false;
+                let attempts = 0;
+                while (!placed && attempts < 100) {
+                    const dir = Math.floor(Math.random() * 3); // 0: horiz, 1: vert, 2: diag
+                    const reverse = Math.random() > 0.5;
+                    const wordToPlace = reverse ? palabra.split('').reverse().join('') : palabra;
+                    
+                    let row = Math.floor(Math.random() * gridSize);
+                    let col = Math.floor(Math.random() * gridSize);
+                    
+                    if (canPlace(grid, wordToPlace, row, col, dir, gridSize)) {
+                        placeWord(grid, wordToPlace, row, col, dir);
+                        placed = true;
+                    }
+                    attempts++;
+                }
+            });
+
+            // Rellenar con letras aleatorias
+            const letras = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ";
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    if (grid[r][c] === '') {
+                        grid[r][c] = letras.charAt(Math.floor(Math.random() * letras.length));
+                    }
+                }
+            }
+
+            renderSopa(grid, gridSize);
+            renderWordList();
+            
+            document.getElementById('print-section').style.display = 'block';
+            document.getElementById('export-controls').style.display = 'flex';
+            document.getElementById('export-controls').style.justifyContent = 'center';
+            document.getElementById('export-controls').style.gap = '10px';
+        }
+
+        function canPlace(grid, word, row, col, dir, size) {
+            if (dir === 0 && col + word.length > size) return false;
+            if (dir === 1 && row + word.length > size) return false;
+            if (dir === 2 && (row + word.length > size || col + word.length > size)) return false;
+
+            for (let i = 0; i < word.length; i++) {
+                let r = row + (dir === 1 || dir === 2 ? i : 0);
+                let c = col + (dir === 0 || dir === 2 ? i : 0);
+                if (grid[r][c] !== '' && grid[r][c] !== word[i]) return false;
+            }
+            return true;
+        }
+
+        function placeWord(grid, word, row, col, dir) {
+            for (let i = 0; i < word.length; i++) {
+                let r = row + (dir === 1 || dir === 2 ? i : 0);
+                let c = col + (dir === 0 || dir === 2 ? i : 0);
+                grid[r][c] = word[i];
+            }
+        }
+
+        function renderSopa(grid, size) {
+            const container = document.getElementById('sopa-grid');
+            container.innerHTML = '';
+            container.style.gridTemplateColumns = `repeat(${size}, 30px)`;
+            
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'sopa-cell';
+                    cell.textContent = grid[r][c];
+                    container.appendChild(cell);
+                }
+            }
+        }
+
+        function renderWordList() {
+            const container = document.getElementById('word-list-print');
+            container.innerHTML = '';
+            
+            // Ordenamos alfabéticamente para presentación
+            const palabrasOrdenadas = [...palabras].sort();
+            
+            palabrasOrdenadas.forEach(palabra => {
+                const div = document.createElement('div');
+                div.className = 'word-item-print';
+                
+                const checkbox = document.createElement('div');
+                checkbox.className = 'checkbox-print';
+                
+                const text = document.createElement('span');
+                text.textContent = palabra;
+                
+                div.appendChild(checkbox);
+                div.appendChild(text);
+                container.appendChild(div);
+            });
+        }
+
+        // --- Exportación ---
+        function exportarImagen() {
+            const printArea = document.getElementById('print-section');
+            html2canvas(printArea).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'SopaDeLetras.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        }
+
+        function exportarPDF() {
+            const { jsPDF } = window.jspdf;
+            const printArea = document.getElementById('print-section');
+            
+            html2canvas(printArea).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const doc = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+                
+                const imgProps = doc.getImageProperties(imgData);
+                const pdfWidth = doc.internal.pageSize.getWidth();
+                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                
+                doc.addImage(imgData, 'PNG', 0, 10, pdfWidth, pdfHeight);
+                doc.save('SopaDeLetras.pdf');
+            });
+        }
+
+
+        /* ==========================================
+           LÓGICA: EASTER EGG (INVITACIÓN CINE)
+           ========================================== */
+        
+        let clicksNo = 0;
+        let scaleSi = 1;
+        let scaleNo = 1;
+
+        
+        let diaElegido = '';
+        let peliculaElegida = '';
+        let horaElegida = '';
+
+        // ACTIVADOR DEL EASTER EGG
+        function activarEasterEgg() {
+            // Oculta la app principal y muestra el flujo de la invitación
+            document.getElementById('app-sopa').classList.replace('active-slide', 'hidden-slide');
+            document.getElementById('app-invitacion').classList.replace('hidden-slide', 'active-slide');
+            document.querySelector('.easter-egg-trigger').style.display = 'none'; // ocultar el trigger
+        }
+
+        function achicarNo() {
+            clicksNo++;
+            scaleSi += 0.4;
+            scaleNo -= 0.2;
+            
+            const btnSi = document.getElementById('btn-si');
+            const btnNo = document.getElementById('btn-no');
+            
+            btnSi.style.transform = `scale(${scaleSi})`;
+            btnNo.style.transform = `scale(${scaleNo})`;
+
+            if (clicksNo >= 3) {
+                btnNo.style.display = 'none';
+                document.getElementById('img-broma').style.display = 'block';
+            }
+        }
+
+           function irADias() {
+            document.getElementById('slide-pregunta').classList.replace('active-slide', 'hidden-slide');
+            document.getElementById('slide-dias').classList.replace('hidden-slide', 'active-slide');
+        }
+
+        function seleccionarDiaYContinuar(dia) {
+            diaElegido = dia;
+            document.getElementById('slide-dias').classList.replace('active-slide', 'hidden-slide');
+            document.getElementById('slide-cartelera').classList.replace('hidden-slide', 'active-slide');
+        }
+
+        function confirmarCita(pelicula, hora) {
+            peliculaElegida = pelicula;
+            horaElegida = hora;
+            const text = document.getElementById('modal-text');
+            // MENSAJE FINAL
+            text.innerHTML = `Plan confirmado:<br><strong>${diaElegido}</strong><br><strong>${pelicula}</strong> a las <strong>${hora}</strong>.<br>Nos vemos! 🍿🫶`;
+            document.getElementById('success-modal').classList.add('active');
+        }
+
+        function confirmarYRedirigir() {
+            // Crear el mensaje a copiar
+            const mensaje = `Confirmo nuestra salida para el día ${diaElegido}. Veremos "${peliculaElegida}" a las ${horaElegida} :))) QUIEN SOY`;
+            
+            // Método moderno para copiar al portapapeles
+            navigator.clipboard.writeText(mensaje).then(() => {
+                // Redirigir a Instagram después de copiar con éxito
+                window.location.href = "https://ig.me/m/hzzk66";
+            }).catch(err => {
+                console.error("Error al copiar al portapapeles: ", err);
+                // Si el PC bloquea el copiado, redirige de todas formas
+                window.location.href = "https://ig.me/m/hzzk66";
+            });
+        }
+
+        function irACartelera() {
+            document.getElementById('slide-pregunta').classList.replace('active-slide', 'hidden-slide');
+            document.getElementById('slide-cartelera').classList.replace('hidden-slide', 'active-slide');
+        }
+
+
+
+        function cerrarModal() {
+            document.getElementById('success-modal').classList.remove('active');
+        }
+    </script>
+</body>
+</html>
