@@ -518,9 +518,9 @@ body {
         <div id="slide-dias" class="glass-panel hidden-slide">
             <h2>¿Qué día te acomoda más? 🗓️</h2>
             <div class="botones-decision">
-                <button class="btn" onclick="seleccionarDiaYContinuar('lunes 28')">Lunes 28</button>
-                <button class="btn" onclick="seleccionarDiaYContinuar('martes 29')">Martes 29</button>
-                <button class="btn" onclick="seleccionarDiaYContinuar('miércoles 30')">Miércoles 30</button>
+                <button class="btn" onclick="seleccionarDiaYContinuar('Lunes 28')">Lunes 28</button>
+                <button class="btn" onclick="seleccionarDiaYContinuar('Martes 29')">Martes 29</button>
+                <button class="btn" onclick="seleccionarDiaYContinuar('Miércoles 30')">Miércoles 30</button>
             </div>
         </div>
 
@@ -814,19 +814,23 @@ body {
             peliculaElegida = pelicula;
             horaElegida = hora;
             const text = document.getElementById('modal-text');
-            text.innerHTML = `Plan confirmado:<br><strong>${diaElegido}</strong><br><strong>${pelicula}</strong> a las <strong>${hora}</strong>.<br> ou yets`;
+            text.innerHTML = `Plan confirmado:<br><strong>${diaElegido}</strong><br><strong>${pelicula}</strong> a las <strong>${hora}</strong>.<br>Nos vemos! `;
             document.getElementById('success-modal').classList.add('active');
         }
 
-        function confirmarYRedirigir() {
-            const mensaje = `Confirmo nuestra salida para el día ${diaElegido}. Veremos "${peliculaElegida}" a las ${horaElegida} :))) QUIEN SOY`;
+function confirmarYRedirigir() {
+            // 1. Preparamos el mensaje
+            const mensaje = `Confirmo salida para el día ${diaElegido}. Veremos "${peliculaElegida}" a las ${horaElegida} :))) QUIEN SOY`;
             
-            navigator.clipboard.writeText(mensaje).then(() => {
-                window.location.href = "https://ig.me/m/hzzk66";
-            }).catch(err => {
-                console.error("Error al copiar al portapapeles: ", err);
-                window.location.href = "https://ig.me/m/hzzk66";
-            });
+            // 2. PON TU NÚMERO AQUÍ (Con el código de país de Chile 56, seguido de tu número. Sin el signo +)
+            // Ejemplo: si tu número es 9 1234 5678, pon "56912345678"
+            const tuNumeroWsp = "56997428657"; 
+            
+            // 3. Codificamos el texto para que la URL entienda los espacios y caracteres especiales
+            const textoCodificado = encodeURIComponent(mensaje);
+            
+            // 4. Redirigimos directamente a la app de WhatsApp con el texto ya escrito en el chat!
+            window.location.href = `https://wa.me/${tuNumeroWsp}?text=${textoCodificado}`;
         }
 
         function cerrarModal() {
